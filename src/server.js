@@ -56,14 +56,16 @@ app.use('/test', otherRouter);
 
 const options = {
     alias: {
-        "p": "PORT"
+        "p": "PORT",
+        "m": "MODO"
     },
     default: {
-        "PORT": 8080
+        "PORT": 8080,
+        "MODO": "FORK"
     }
 };
 
-const { PORT } = minimist(process.argv.slice(2), options);
+const { PORT } = minimist(process.argv.slice(2), options, modo);
 
 const server = app.listen(PORT, () => {
     console.log(` >>>>> 🚀 Server started at http://localhost:${PORT}`)
