@@ -52,6 +52,36 @@ app.use('/api/carrito', cartRouter);
 app.use('/api/usuario', userRouter);
 app.use('/test', otherRouter);
 
+if(config.mode == 'CLUSTER' && cluster.isPrimary){
+
+    const numCPUS = cpus().length;
+    console.log(`Numero de procesadores: ${numCPUS}`)
+    console.log(`PID MASTER ${process.pid}`)
+
+    for (let i = 0; i < numCPUS; i++) {
+        cluster.fork()
+    }
+
+    cluster.on('exit', Worker => {
+        console.log('Worker', Worker.process.pid, 'died', new Date().toLocaleString())
+        cluster.fork()
+    })
+
+} else {
+
+    process.on('exit', code =>{
+        console.log('Salida con codigo de error: ' + code)
+    })
+    
+    const app = createServer()
+    try {
+        const connectedServer = await app.listen(config.PORT)
+        console.log(`proceso #${process.pid} escuchando el puerto ${connectedServer.address().port}`)
+    } catch (error) {
+        console.log(`Error en el servidor ${error}`)
+    }
+}
+
 /* --------------- Leer el puerto por consola o setear default -------------- */
 
 const options = {
