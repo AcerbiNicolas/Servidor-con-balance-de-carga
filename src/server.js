@@ -1,5 +1,7 @@
 import express from "express";
 import productRouter from './routes/product.js';
+import cluster from "cluster";
+import * as os from 'os'
 import cartRouter from './routes/cart.js';
 import userRouter from './routes/user.js';
 import otherRouter from './routes/other.js';
@@ -10,6 +12,7 @@ import {fileURLToPath} from 'url';
 import mongoStore from 'connect-mongo';
 
 import minimist from 'minimist';
+import { Console } from "console";
 
 const app = express();
 
@@ -52,34 +55,36 @@ app.use('/api/carrito', cartRouter);
 app.use('/api/usuario', userRouter);
 app.use('/test', otherRouter);
 
-if(config.mode == 'CLUSTER' && cluster.isPrimary){
+const modoCluster = process.argv[3] == 'CLUSTER'
 
-    const numCPUS = cpus().length;
+if(modoCluster && cluster.isPrimary){
+
+    const numCPUS = os.cpus().length;
+
     console.log(`Numero de procesadores: ${numCPUS}`)
-    console.log(`PID MASTER ${process.pid}`)
+    console.log(`Primary ${process.pid} in running`)
 
     for (let i = 0; i < numCPUS; i++) {
         cluster.fork()
     }
 
     cluster.on('exit', Worker => {
-        console.log('Worker', Worker.process.pid, 'died', new Date().toLocaleString())
+        console.log(`Worker ${Worker.process.pid} died`, new Date().toLocaleString())
         cluster.fork()
     })
 
 } else {
+    const app = express();
+    const PORT = parseInt(process.argv[2]) || 8080;
 
-    process.on('exit', code =>{
-        console.log('Salida con codigo de error: ' + code)
+    app.get(`/datos`, (req, res) =>{
+        res.send(`Server en port(${PORT}) - PID ${process.pid} - FyH ${new Date().toLocaleString()}`)
     })
-    
-    const app = createServer()
-    try {
-        const connectedServer = await app.listen(config.PORT)
-        console.log(`proceso #${process.pid} escuchando el puerto ${connectedServer.address().port}`)
-    } catch (error) {
-        console.log(`Error en el servidor ${error}`)
-    }
+    const server = app.listen(PORT, ()=>{
+        console.log(`Servidor express escuchando en http://localhost:${PORT} - PID ${process.pid}`)
+    })
+    server.on('error', error => console.log(`Error en el servidor ${error}`))
+
 }
 
 /* --------------- Leer el puerto por consola o setear default -------------- */
